@@ -6,8 +6,8 @@ import EventPreview from "./Components/EventComp/EventPreview";
 import FrontPage from "./Components/FrontPage/HeadLinepage";
 import image from "./Image/jess.jpg";
 
-export default function Home(scrollYProgress, TargetRef) {
-  const Navs = (state) => state.Nav;
+const Home:React.FC = ({scrollYProgress, TargetRef}:any) => {
+  const Navs = (state : any) => state.Nav;
   const { NavState } = useSelector(Navs);
   return (
     <div
@@ -20,3 +20,6 @@ export default function Home(scrollYProgress, TargetRef) {
     </div>
   );
 }
+
+
+export default Home;

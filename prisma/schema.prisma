@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,4 +5,162 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  token_type        String?
+  access_token      String?
+  expires_at        Int?
+  scope             String?
+  id_token          String?
+  createAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [Id], onDelete: Restrict)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [Id], onDelete: Restrict)
+  createdAt    DateTime @default(now())
+  updateAt     DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackUp     Boolean
+  transports           String?
+  user                 User    @relation(fields: [userId], references: [Id], onDelete: Restrict)
+
+  @@id([userId, credentialID])
+}
+
+model User {
+  Id             String             @id @default(cuid())
+  FirstName      String
+  LastName       String
+  email          String             @unique
+  ProfileName    String             @unique
+  Phone          BigInt             @unique
+  age            Int
+  createdAt      DateTime           @default(now())
+  UpdateAt       DateTime           @updatedAt
+  Password       String
+  accounts       Account[]
+  sessions       Session[]
+  authenticator  Authenticator[]
+  avatar         String?
+  CreatorAccess  Creator[]
+  Access         Access             @default(USER)
+  BoughtTickets  User_EventTicket[] @relation("BoughtTicket")
+  SharedTickets  User_EventTicket[] @relation("SharedToUser")
+  P2PSoldTickets User_EventTicket[] @relation("SoldToUser")
+
+  @@unique([email, Id, FirstName, LastName, Phone])
+  @@index([email])
+}
+
+enum Access {
+  USER
+  CREATOR
+}
+
+model Creator {
+  Id               String   @id @default(cuid())
+  CompanyName      String?  @unique
+  CompanyImage     String?
+  AboutCompany     String?
+  CompanyPhone     String?  @unique
+  CreatedAt        DateTime @default(now())
+  UpdatedAt        DateTime @updatedAt
+  events           Event[]
+  CreatorPhone     BigInt   @unique
+  CompanyAddress   String?
+  verified         Boolean  @default(false)
+  Creator          User     @relation(fields: [CreatorId, CreatorEmail, CreatorFirstName, CreatorLastName, CreatorPhone], references: [Id, email, FirstName, LastName, Phone], onDelete: Restrict)
+  CreatorId        String   @unique
+  CreatorFirstName String
+  CreatorLastName  String
+  CreatorEmail     String   @unique
+  Status           Status   @default(PENDING)
+
+  @@unique([CreatorEmail, CreatorId, CreatorFirstName, CreatorLastName, CreatorPhone])
+}
+
+model Event {
+  Id         String        @id @default(cuid())
+  Creator    Creator       @relation(fields: [creatorId], references: [Id], onDelete: Restrict)
+  creatorId  String        @unique
+  Tickets    EventTicket[]
+  Name       String
+  Title      String        @unique
+  AgeRange   String
+  Performers String
+  CreatedAt  DateTime      @default(now())
+  UpdatedAt  DateTime      @updatedAt
+
+  @@unique([Name, Id, Title])
+}
+
+model EventTicket {
+  Id               String             @id @default(cuid())
+  EventName        String             @unique
+  EventId          String             @unique
+  EventTitle       String             @unique
+  Event            Event              @relation(fields: [EventName, EventId, EventTitle], references: [Name, Id, Title], onDelete: Restrict)
+  TicketType       String             @unique
+  Price            Float              @unique
+  User_EventTicket User_EventTicket[]
+  Quantity         Int
+
+  @@unique([Id, EventId, EventName])
+}
+
+model User_EventTicket {
+  Id          Int         @default(autoincrement())
+  BoughtBy    User        @relation("BoughtTicket", fields: [BoughtById], references: [Id], onDelete: Restrict)
+  BoughtById  String      @unique
+  SharedTo    User?       @relation("SharedToUser", fields: [SharedToId], references: [Id], onDelete: Restrict)
+  SharedToId  String      @unique
+  ReSoldTo    User?       @relation("SoldToUser", fields: [ReSoldToId], references: [Id], onDelete: Restrict)
+  ReSoldToId  String      @unique
+  Ticket      EventTicket @relation(fields: [TicketId, EventId, EventName], references: [Id, EventId, EventName], onDelete: Restrict)
+  EventId     String
+  EventName   String
+  TicketId    String      @unique
+  Qrcode      Int         @unique
+  PurchasedAt DateTime    @default(now())
+  SharedAt    DateTime?   @default(now())
+  ResooldAt   DateTime?   @default(now())
+
+  @@id([BoughtById, SharedToId, TicketId, Id, EventId])
+  @@unique([Id, BoughtById, ReSoldToId, SharedToId])
+}
+
+enum Status {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  SUSPENDED
 }
